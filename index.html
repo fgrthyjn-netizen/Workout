@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Pulse Workout Tracker & Analytics</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              200: '#fed7aa',
+              300: '#fdba74',
+              400: '#ff8500',
+              500: '#ff6b00', // Vibrant Dark Orange
+              600: '#e05300',
+              700: '#b83e00',
+              800: '#913204',
+              900: '#752b0b',
+              950: '#3f1302',
+            },
+            dark: {
+              bg: '#0f0f11',
+              card: '#1a1a1e',
+              border: '#2a2a32',
+              input: '#151518',
+              hover: '#24242c',
+              key: '#22222a'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          },
+          boxShadow: {
+            'glow-orange': '0 0 25px -2px rgba(255, 107, 0, 0.45)',
+            'glow-sm': '0 0 12px 0px rgba(255, 107, 0, 0.3)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #0f0f11;
+      color: #F3F4F6;
+      font-family: 'Inter', sans-serif;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f0f11;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2a2a32;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #ff6b00;
+    }
+
+    .glass-card {
+      background: linear-gradient(145deg, rgba(26, 26, 30, 0.95) 0%, rgba(18, 18, 22, 0.9) 100%);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    
+    .glass-modal {
+      background: rgba(10, 10, 12, 0.88);
+      backdrop-filter: blur(20px);
+    }
+
+    .orange-gradient-text {
+      background: linear-gradient(135deg, #FFA033 0%, #FF6B00 50%, #FF3D00 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .orange-gradient-bg {
+      background: linear-gradient(135deg, #FF7A00 0%, #FF5500 100%);
+    }
+
+    .active-press {
+      transition: transform 0.08s ease, filter 0.08s ease;
+    }
+    .active-press:active {
+      transform: scale(0.95);
+      filter: brightness(1.15);
+    }
+
+    .keypad-btn {
+      transition: all 0.08s ease;
+      touch-action: manipulation;
+    }
+    .keypad-btn:active {
+      transform: scale(0.91);
+      background-color: #ff6b00 !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 15px rgba(255, 107, 0, 0.6);
+    }
+
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col justify-between max-w-md mx-auto shadow-2xl relative overflow-x-hidden pb-6 selection:bg-brand-500/30">
+
+  <!-- TOP APP HEADER -->
+  <header class="sticky top-0 z-30 px-4 pt-3 pb-2.5 bg-dark-bg/95 backdrop-blur-md border-b border-dark-border/80">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-2.5">
+        <div class="w-9 h-9 rounded-xl orange-gradient-bg flex items-center justify-center text-white font-black text-lg shadow-glow-sm">
+          ⚡
+        </div>
+        <div>
+          <h1 class="text-lg font-black tracking-tight text-white flex items-center gap-1.5 leading-none">
+            PULSE <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-400 font-bold border border-brand-500/30">PRO</span>
+          </h1>
+          <p id="currentDateDisplay" class="text-[11px] text-zinc-400 font-medium">Loading date...</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1">
+        <button onclick="switchMainView('settings')" title="Data & Settings" class="w-8 h-8 rounded-xl bg-dark-card border border-dark-border text-zinc-300 hover:text-white flex items-center justify-center active-press">
+          ⚙️
+        </button>
+      </div>
+    </div>
+
+    <!-- NAVIGATION TABS -->
+    <div class="grid grid-cols-3 gap-1 bg-dark-card border border-dark-border p-1 rounded-xl mt-2.5">
+      <button id="viewTabTracker" onclick="switchMainView('tracker')" class="py-1.5 rounded-lg text-xs font-bold transition-all bg-brand-500 text-white shadow-glow-sm">
+        Tracker
+      </button>
+      <button id="viewTabAnalytics" onclick="switchMainView('analytics')" class="py-1.5 rounded-lg text-xs font-bold transition-all text-zinc-400 hover:text-white">
+        Analytics
+      </button>
+      <button id="viewTabHistory" onclick="switchMainView('history')" class="py-1.5 rounded-lg text-xs font-bold transition-all text-zinc-400 hover:text-white">
+        History
+      </button>
+    </div>
+
+    <!-- 2 AM RESET COUNTDOWN BANNER -->
+    <div class="mt-2 bg-brand-950/40 border border-brand-500/25 rounded-xl px-3 py-1 flex items-center justify-between text-xs">
+      <div class="flex items-center gap-2 text-zinc-300">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-brand-500"></span>
+        </span>
+        <span class="text-zinc-400 text-[10px]">2:00 AM Reset In:</span>
+      </div>
+      <div id="countdownDisplay" class="font-mono font-bold text-brand-400 text-xs">00h 00m 00s</div>
+    </div>
+
+    <!-- 5-DAY BACKUP / PROGRESS REMINDER BANNER (DYNAMIC) -->
+    <div id="reminderBanner" class="hidden mt-2 p-2.5 bg-amber-500/15 border border-amber-500/40 rounded-xl space-y-1.5">
+      <div class="flex items-start justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-amber-400 text-sm">📅</span>
+          <div>
+            <h4 class="text-xs font-black text-amber-300">5-Day Backup & Progress Review</h4>
+            <p class="text-[10px] text-zinc-300 leading-tight">It's been 5 days! Back up your workout data or review your trends.</p>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 pt-1">
+        <button onclick="exportDataJSON()" class="flex-1 py-1 bg-amber-500 text-black font-extrabold text-[11px] rounded-lg active-press">
+          💾 Export Data Now
+        </button>
+        <button onclick="dismissReminder()" class="px-3 py-1 bg-dark-card border border-amber-500/30 text-amber-300 font-bold text-[11px] rounded-lg active-press">
+          Dismiss
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="mainContainer" class="px-4 py-3 space-y-4 flex-1">
+    
+    <!-- ==================== VIEW 1: TRACKER ==================== -->
+    <div id="trackerSection" class="space-y-4">
+
+      <!-- WORKOUT SELECTION TABS -->
+      <div class="space-y-1.5">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-black uppercase tracking-wider text-zinc-400">Select Workout</span>
+          <button onclick="openWorkoutModal()" class="text-[11px] font-bold text-brand-400 hover:text-brand-300 flex items-center gap-1 bg-brand-500/10 px-2.5 py-1 rounded-lg border border-brand-500/30 active-press">
+            <span>+ Custom Workout</span>
+          </button>
+        </div>
+
+        <div id="workoutTabsNav" class="flex items-center gap-2 overflow-x-auto hide-scrollbar py-1">
+          <!-- Dynamically populated workout pills -->
+        </div>
+      </div>
+
+      <!-- ACTIVE WORKOUT OVERVIEW CARD -->
+      <section class="glass-card rounded-2xl p-4 relative overflow-hidden">
+        <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-brand-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <span id="activeWorkoutIcon" class="w-8 h-8 rounded-lg bg-brand-500/20 border border-brand-500/30 flex items-center justify-center text-brand-400 font-bold text-base">
+              💪
+            </span>
+            <div>
+              <h2 id="activeWorkoutTitle" class="text-lg font-black text-white leading-none">Push-ups</h2>
+              <span id="activeWorkoutRuleSubtext" class="text-[10px] text-zinc-400 font-mono">+1 rep / day</span>
+            </div>
+          </div>
+
+          <button onclick="openEditActiveWorkoutModal()" class="px-2.5 py-1 text-[11px] font-bold text-zinc-400 hover:text-white bg-dark-bg border border-dark-border rounded-lg active-press flex items-center gap-1">
+            ⚙️ Settings
+          </button>
+        </div>
+
+        <!-- REMAINING AMOUNT DISPLAY -->
+        <div class="text-center py-3 my-2 bg-gradient-to-b from-brand-950/40 via-dark-card to-dark-card rounded-2xl border border-brand-500/20 shadow-inner">
+          <span class="text-[10px] font-black uppercase tracking-widest text-brand-400 bg-brand-500/10 px-3 py-0.5 rounded-full border border-brand-500/30">
+            AMOUNT LEFT TODAY
+          </span>
+          
+          <div id="heroRemainingDisplay" class="text-4xl sm:text-5xl font-black text-white mt-1.5 mb-0.5 tracking-tight orange-gradient-text">
+            50 Reps Left
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 mt-3 px-2 border-t border-dark-border/60 pt-2 text-center">
+            <div>
+              <span class="block text-[9px] uppercase font-bold text-zinc-500">Target</span>
+              <strong class="text-xs text-zinc-200 font-mono" id="heroGoalText">50 reps</strong>
+            </div>
+            <div>
+              <span class="block text-[9px] uppercase font-bold text-zinc-500">Done Today</span>
+              <strong class="text-xs text-brand-400 font-mono" id="heroCompletedText">0 reps</strong>
+            </div>
+            <div>
+              <span class="block text-[9px] uppercase font-bold text-zinc-500">Sets Today</span>
+              <strong class="text-xs text-zinc-200 font-mono" id="heroSetsTodayText">0 sets</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="mt-2">
+          <div class="w-full h-2 bg-dark-bg rounded-full overflow-hidden p-0.5 border border-dark-border">
+            <div id="heroProgressBar" class="h-full rounded-full bg-brand-500 transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LIVE STOPWATCH / TIMER CARD (TIMED WORKOUTS ONLY) -->
+      <section id="stopwatchCard" class="hidden glass-card rounded-2xl p-3 border border-brand-500/30 space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span id="stopwatchPulse" class="w-2.5 h-2.5 rounded-full bg-zinc-600"></span>
+            <span class="text-xs font-black uppercase tracking-wider text-zinc-300">Live Plank Timer</span>
+          </div>
+          <div id="stopwatchDisplay" class="font-mono text-2xl font-black text-brand-400">00:00</div>
+        </div>
+
+        <!-- TIMER BUTTONS: NO "USE ELAPSED" BUTTON! PAUSE AUTO-FILLS KEYPAD -->
+        <div class="grid grid-cols-2 gap-2">
+          <button id="timerToggleBtn" onclick="toggleStopwatch()" class="py-2.5 bg-brand-500/20 border border-brand-500/40 text-brand-300 font-extrabold text-xs rounded-xl active-press flex items-center justify-center gap-1.5">
+            <span id="timerIcon">▶</span> <span id="timerText">Start Timer</span>
+          </button>
+          <button onclick="resetStopwatch()" class="py-2.5 bg-dark-bg border border-dark-border text-zinc-400 font-bold text-xs rounded-xl active-press">
+            Reset Timer
+          </button>
+        </div>
+        <p class="text-[10px] text-zinc-400 text-center italic">
+          ⚡ Pausing timer automatically transfers seconds to the keypad below!
+        </p>
+      </section>
+
+      <!-- EMBEDDED DIRECT KEYPAD CARD (NO MODALS REQUIRED TO LOG) -->
+      <section class="glass-card rounded-2xl p-4 border border-brand-500/30 shadow-glow-sm space-y-3">
+        
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+            <span class="text-brand-500">⌨️</span> Enter Set Amount
+          </span>
+          <span id="keypadUnitLabel" class="text-xs font-mono font-bold text-brand-400">reps</span>
+        </div>
+
+        <!-- TYPED AMOUNT DISPLAY -->
+        <div class="h-14 bg-dark-input border-2 border-brand-500/50 rounded-2xl px-4 flex items-center justify-between shadow-inner">
+          <span class="text-zinc-500 text-xs font-bold uppercase tracking-wider">Amount:</span>
+          <div id="keypadTypedDisplay" class="text-3xl font-black text-brand-400 font-mono tracking-wider">
+            0
+          </div>
+        </div>
+
+        <!-- QUICK PRESET SHORTCUT BUTTONS -->
+        <div class="grid grid-cols-4 gap-2">
+          <button onclick="keypadQuickAdd(5)" class="keypad-btn py-2 bg-dark-border/80 text-brand-300 font-extrabold text-xs rounded-xl border border-dark-border">+5</button>
+          <button onclick="keypadQuickAdd(10)" class="keypad-btn py-2 bg-dark-border/80 text-brand-300 font-extrabold text-xs rounded-xl border border-dark-border">+10</button>
+          <button onclick="keypadQuickAdd(25)" class="keypad-btn py-2 bg-dark-border/80 text-brand-300 font-extrabold text-xs rounded-xl border border-dark-border">+25</button>
+          <button onclick="keypadLogAllRemaining()" class="keypad-btn py-2 bg-brand-500/20 text-brand-300 font-black text-[10px] uppercase leading-tight rounded-xl border border-brand-500/40 flex items-center justify-center text-center">
+            Log Remaining
+          </button>
+        </div>
+
+        <!-- DIRECT KEYPAD GRID -->
+        <div class="grid grid-cols-3 gap-2 pt-1">
+          <button onclick="keypadPress('1')" class="keypad-btn h-12 bg-dark-key text-white font-black text-xl rounded-xl border border-dark-border">1</button>
+          <button onclick="keypadPress('2')" class="keypad-btn h-12 bg-dark-key text-white font-black text-xl rounded-xl border border-dark-border">2</button>
+          <button onclick="keypadPress('3')" class="keypad-btn h-12 bg-dark-key text-white font-black text-xl rounded-xl border border-dark-border">3</button>
+
+          <button onclick="keypadPress('4')" class="keypad-btn h-12 bg-dark-key text-white font-black text-xl rounded-xl border border-dark-border">4</button>
+          <button onclick="keypadPress('5')" class="keypad-btn h-12 bg-dark-key text-white font-black text-xl rounded-xl border border-dark-border">5</button>
+          <button onclick="keypadPress('6')" class="keypad-btn h-12 bg-dark-key text-white font-black text-xl rounded-xl border border-dark-border">6</button>
+
+          <button onclick="keypadPress('7')" class="keypad-btn h-12 bg-dark-key text-white font-black text-xl rounded-xl border border-dark-border">7</button>
+          <button onclick="keypadPress('8')" class="keypad-btn h-12 bg-dark-key text-white font-black text-xl rounded-xl border border-dark-border">8</button>
+          <button onclick="keypadPress('9')" class="keypad-btn h-12 bg-dark-key text-white font-black text-xl rounded-xl border border-dark-border">9</button>
+
+          <button onclick="keypadClear()" class="keypad-btn h-12 bg-red-500/15 text-red-400 font-extrabold text-sm rounded-xl border border-red-500/30">C</button>
+          <button onclick="keypadPress('0')" class="keypad-btn h-12 bg-dark-key text-white font-black text-xl rounded-xl border border-dark-border">0</button>
+          <button onclick="keypadBackspace()" class="keypad-btn h-12 bg-amber-500/15 text-amber-400 font-black text-lg rounded-xl border border-amber-500/30">⌫</button>
+        </div>
+
+        <!-- DIRECT LOG BUTTON -->
+        <button onclick="submitKeypadLog()" class="w-full py-4 orange-gradient-bg text-white font-black text-base rounded-2xl shadow-glow-orange active-press flex items-center justify-center gap-2 uppercase tracking-wider mt-2">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+          </svg>
+          <span id="submitLogBtnText">LOG SET NOW</span>
+        </button>
+
+      </section>
+
+      <!-- TODAY'S LOGGED SETS -->
+      <section class="glass-card rounded-2xl p-3.5 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-black uppercase tracking-wider text-zinc-400">Today's Logged Sets</span>
+          <span id="todaySetsCountBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-dark-border text-zinc-300 font-mono">0 sets</span>
+        </div>
+
+        <div id="todaySetsList" class="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+          <!-- Dynamic entries -->
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ==================== VIEW 2: ANALYTICS & LINE GRAPH ==================== -->
+    <div id="analyticsSection" class="hidden space-y-4">
+      
+      <div class="glass-card rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-black uppercase tracking-wider text-white">Performance Trends</h3>
+            <p class="text-[11px] text-zinc-400">Average reps / seconds per set by date</p>
+          </div>
+
+          <!-- Workout Filter Dropdown -->
+          <select id="analyticsWorkoutSelect" onchange="renderAnalyticsGraph()" class="px-3 py-1.5 bg-dark-bg border border-brand-500/40 rounded-xl text-xs font-bold text-brand-400 focus:outline-none">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+
+        <!-- Summary Metric Badges -->
+        <div class="grid grid-cols-3 gap-2 py-2 border-y border-dark-border/60">
+          <div class="bg-dark-bg p-2 rounded-xl text-center border border-dark-border">
+            <span class="block text-[9px] uppercase font-bold text-zinc-500">Overall Avg / Set</span>
+            <strong id="statOverallAvg" class="text-sm font-extrabold text-brand-400 font-mono">0.0</strong>
+          </div>
+          <div class="bg-dark-bg p-2 rounded-xl text-center border border-dark-border">
+            <span class="block text-[9px] uppercase font-bold text-zinc-500">Peak Set</span>
+            <strong id="statPeakSet" class="text-sm font-extrabold text-amber-400 font-mono">0</strong>
+          </div>
+          <div class="bg-dark-bg p-2 rounded-xl text-center border border-dark-border">
+            <span class="block text-[9px] uppercase font-bold text-zinc-500">Total Sets</span>
+            <strong id="statTotalSets" class="text-sm font-extrabold text-white font-mono">0</strong>
+          </div>
+        </div>
+
+        <!-- HTML5 Canvas Line Chart Container -->
+        <div class="relative w-full h-64 bg-dark-bg/80 border border-dark-border rounded-2xl p-2 overflow-hidden flex flex-col justify-between">
+          <canvas id="analyticsCanvas" class="w-full h-full block cursor-pointer"></canvas>
+          <div id="chartTooltip" class="hidden absolute z-10 bg-dark-card border border-brand-500/60 rounded-xl px-2.5 py-1.5 shadow-2xl pointer-events-none text-xs">
+            <!-- Tooltip details -->
+          </div>
+        </div>
+
+        <p class="text-[10px] text-zinc-500 text-center italic">
+          💡 Tap/hover over any point on the graph to inspect daily set averages.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- ==================== VIEW 3: FULL HISTORY LOG ==================== -->
+    <div id="historySection" class="hidden space-y-4">
+      <div class="glass-card rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-black uppercase tracking-wider text-white">Full Workout History</h3>
+          <span class="text-xs text-brand-400 font-mono font-bold" id="totalHistoryCount">0 Entries</span>
+        </div>
+
+        <div id="historyLogsContainer" class="space-y-3 max-h-[65vh] overflow-y-auto pr-1">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== VIEW 4: SETTINGS & BACKUP ==================== -->
+    <div id="settingsSection" class="hidden space-y-4">
+      
+      <!-- DATA BACKUP & RESTORE CARD -->
+      <div class="glass-card rounded-2xl p-4 space-y-3 border border-brand-500/30">
+        <h3 class="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+          <span>💾</span> Data Backup & Restore
+        </h3>
+        <p class="text-xs text-zinc-400 leading-relaxed">
+          Export your entire workout history, custom exercises, and progression configurations to JSON, or import a saved backup.
+        </p>
+
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button onclick="exportDataJSON()" class="py-3 orange-gradient-bg text-white font-extrabold text-xs rounded-xl shadow-glow-sm active-press flex items-center justify-center gap-1.5">
+            <span>📥</span> Export JSON
+          </button>
+          
+          <label class="py-3 bg-dark-bg border border-brand-500/40 text-brand-400 font-extrabold text-xs rounded-xl active-press flex items-center justify-center gap-1.5 cursor-pointer text-center">
+            <span>📤</span> Import JSON
+            <input type="file" id="importFileInput" accept=".json" onchange="importDataJSON(event)" class="hidden" />
+          </label>
+        </div>
+      </div>
+
+      <!-- 5-DAY REMINDER CONFIGURATION CARD -->
+      <div class="glass-card rounded-2xl p-4 space-y-3">
+        <h3 class="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+          <span>⏰</span> 5-Day Reminder Settings
+        </h3>
+        <p class="text-xs text-zinc-400 leading-relaxed">
+          Pulse notifies you every 5 days to review your progress trends and safeguard your data.
+        </p>
+
+        <div class="p-3 bg-dark-bg rounded-xl border border-dark-border flex items-center justify-between">
+          <div>
+            <span class="block text-xs font-bold text-white">Next Reminder Due:</span>
+            <span id="nextReminderStatusText" class="text-xs font-mono text-brand-400">Calculating...</span>
+          </div>
+          <button onclick="resetReminderClock()" class="px-3 py-1.5 bg-dark-card border border-dark-border text-zinc-300 font-bold text-xs rounded-lg active-press">
+            Reset Timer
+          </button>
+        </div>
+
+        <button onclick="requestBrowserNotification()" class="w-full py-2.5 bg-dark-bg border border-dark-border hover:border-brand-500/40 text-zinc-300 font-bold text-xs rounded-xl active-press flex items-center justify-center gap-2">
+          <span>🔔</span> Enable Web Browser Notifications
+        </button>
+      </div>
+
+      <!-- WORKOUT MANAGEMENT CARD -->
+      <div class="glass-card rounded-2xl p-4 space-y-3">
+        <h3 class="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+          <span>⚙️</span> Manage Active Workouts
+        </h3>
+        <p class="text-xs text-zinc-400">
+          Create or modify daily targets, units, and progression rates.
+        </p>
+        <button onclick="openWorkoutModal()" class="w-full py-3 bg-dark-bg border border-dark-border text-brand-400 font-bold text-xs rounded-xl active-press">
+          + Add New Custom Workout
+        </button>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MODAL: ADD / EDIT WORKOUT -->
+  <div id="workoutModal" class="fixed inset-0 z-50 glass-modal flex items-end sm:items-center justify-center p-0 sm:p-4 opacity-0 pointer-events-none transition-all duration-300">
+    <div class="w-full max-w-md bg-dark-card border-t sm:border border-dark-border rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+      
+      <div class="flex items-center justify-between pb-3 border-b border-dark-border">
+        <h3 id="modalTitle" class="text-base font-extrabold text-white">Configure Workout</h3>
+        <button onclick="closeWorkoutModal()" class="w-8 h-8 rounded-full bg-dark-border text-zinc-400 flex items-center justify-center hover:text-white active-press">
+          ✕
+        </button>
+      </div>
+
+      <form id="workoutForm" onsubmit="saveWorkoutForm(event)" class="space-y-4 mt-4">
+        <input type="hidden" id="editingWorkoutId" value="" />
+
+        <div>
+          <label class="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">Workout Name</label>
+          <input type="text" id="formName" required placeholder="e.g. Pull-ups, Squats" class="w-full h-11 px-3 bg-dark-input border border-dark-border rounded-xl text-white font-semibold text-sm focus:outline-none focus:border-brand-500" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">Initial Target</label>
+            <input type="number" id="formInitialTarget" min="1" required value="50" class="w-full h-11 px-3 bg-dark-input border border-dark-border rounded-xl text-white font-bold text-sm focus:outline-none focus:border-brand-500 font-mono" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">Unit</label>
+            <select id="formUnit" class="w-full h-11 px-3 bg-dark-input border border-dark-border rounded-xl text-white font-semibold text-sm focus:outline-none focus:border-brand-500">
+              <option value="reps">Reps (reps)</option>
+              <option value="seconds">Seconds (sec)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="p-3.5 bg-dark-bg border border-brand-500/30 rounded-2xl space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-black text-brand-400 uppercase tracking-wider">Progression Rules</span>
+            <span class="text-[10px] text-zinc-400 font-medium">Auto-increments @ 2 AM</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-zinc-300 mb-1">Increase By</label>
+              <div class="flex items-center">
+                <span class="text-zinc-500 font-bold px-2.5 py-2 bg-dark-card border border-r-0 border-dark-border rounded-l-xl text-xs">+</span>
+                <input type="number" id="formIncrementVal" min="0" required value="1" class="w-full h-10 px-2 bg-dark-input border border-dark-border rounded-r-xl text-white font-bold text-sm focus:outline-none focus:border-brand-500 font-mono" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-semibold text-zinc-300 mb-1">Interval (Days)</label>
+              <div class="flex items-center">
+                <input type="number" id="formIncrementDays" min="1" required value="1" class="w-full h-10 px-2 bg-dark-input border border-dark-border rounded-l-xl text-white font-bold text-sm focus:outline-none focus:border-brand-500 font-mono" />
+                <span class="text-zinc-400 font-medium px-2 py-2 bg-dark-card border border-l-0 border-dark-border rounded-r-xl text-[10px]">day(s)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-2 space-y-2">
+          <button type="submit" class="w-full py-3.5 orange-gradient-bg text-white font-bold text-sm rounded-xl shadow-glow-sm active-press">
+            Save Workout Rules
+          </button>
+          
+          <button type="button" id="deleteWorkoutBtn" onclick="promptDeleteWorkout()" class="hidden w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-bold text-xs rounded-xl active-press">
+            Delete Workout
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- CUSTOM CONFIRMATION MODAL (REPLACES ALERT/CONFIRM) -->
+  <div id="confirmModal" class="fixed inset-0 z-50 glass-modal flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-200">
+    <div class="w-full max-w-xs bg-dark-card border border-dark-border rounded-2xl p-4 shadow-2xl space-y-3 text-center">
+      <h3 id="confirmTitle" class="text-sm font-black text-white">Confirm Action</h3>
+      <p id="confirmMessage" class="text-xs text-zinc-300">Are you sure?</p>
+      <div class="grid grid-cols-2 gap-2 pt-2">
+        <button id="confirmCancelBtn" class="py-2 bg-dark-bg border border-dark-border text-zinc-400 font-bold text-xs rounded-xl active-press">Cancel</button>
+        <button id="confirmOkBtn" class="py-2 bg-brand-500 text-white font-bold text-xs rounded-xl active-press">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastNotification" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-brand-500 text-white font-bold text-xs px-4 py-2.5 rounded-full shadow-2xl opacity-0 pointer-events-none transition-opacity duration-200 flex items-center gap-2">
+    <span id="toastMsg">Action successful!</span>
+  </div>
+
+  <script>
+    /* LOCAL STORAGE STATE KEY */
+    const STORAGE_KEY = 'PULSE_WORKOUT_APP_V4';
+
+    const DEFAULT_STATE = {
+      workouts: [
+        {
+          id: 'pushups',
+          name: 'Push-ups',
+          unit: 'reps',
+          initialTarget: 50,
+          incrementVal: 1,
+          incrementDays: 1,
+          startDateKey: null
+        },
+        {
+          id: 'plank',
+          name: 'Plank',
+          unit: 'seconds',
+          initialTarget: 60,
+          incrementVal: 1,
+          incrementDays: 1,
+          startDateKey: null
+        }
+      ],
+      activeWorkoutId: 'pushups',
+      logs: [],
+      lastReminderTimestamp: Date.now()
+    };
+
+    let state = null;
+    let keypadBuffer = "0";
+
+    // Stopwatch State
+    let stopwatchInterval = null;
+    let stopwatchSeconds = 0;
+    let stopwatchRunning = false;
+
+    function getWorkoutDateKey(timestamp = Date.now()) {
+      const adjusted = new Date(timestamp - 2 * 60 * 60 * 1000);
+      const yyyy = adjusted.getFullYear();
+      const mm = String(adjusted.getMonth() + 1).padStart(2, '0');
+      const dd = String(adjusted.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function getDaysDifference(startDateKey, endDateKey) {
+      if (!startDateKey || !endDateKey) return 0;
+      const d1 = new Date(startDateKey + 'T00:00:00');
+      const d2 = new Date(endDateKey + 'T00:00:00');
+      const diffTime = d2.getTime() - d1.getTime();
+      return Math.floor(diffTime / (1000 * 3600 * 24));
+    }
+
+    function getWorkoutTargetForDate(workout, targetDateKey = getWorkoutDateKey()) {
+      const startDateKey = workout.startDateKey || targetDateKey;
+      const daysPassed = Math.max(0, getDaysDifference(startDateKey, targetDateKey));
+      const intervalDays = Math.max(1, workout.incrementDays || 1);
+      const incVal = workout.incrementVal !== undefined ? workout.incrementVal : 1;
+
+      const intervalsCount = Math.floor(daysPassed / intervalDays);
+      return workout.initialTarget + (intervalsCount * incVal);
+    }
+
+    function getCompletedToday(workoutId, targetDateKey = getWorkoutDateKey()) {
+      return (state.logs || [])
+        .filter(l => l.workoutId === workoutId && l.dateKey === targetDateKey)
+        .reduce((sum, log) => sum + log.amount, 0);
+    }
+
+    function getSetsTodayCount(workoutId, targetDateKey = getWorkoutDateKey()) {
+      return (state.logs || [])
+        .filter(l => l.workoutId === workoutId && l.dateKey === targetDateKey).length;
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          state = JSON.parse(raw);
+        } else {
+          state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+          const todayKey = getWorkoutDateKey();
+          state.workouts.forEach(w => w.startDateKey = todayKey);
+        }
+      } catch (e) {
+        state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+        const todayKey = getWorkoutDateKey();
+        state.workouts.forEach(w => w.startDateKey = todayKey);
+      }
+
+      if (!state.workouts || state.workouts.length === 0) {
+        state.workouts = JSON.parse(JSON.stringify(DEFAULT_STATE.workouts));
+        const todayKey = getWorkoutDateKey();
+        state.workouts.forEach(w => w.startDateKey = todayKey);
+      }
+      if (!state.activeWorkoutId || !state.workouts.find(w => w.id === state.activeWorkoutId)) {
+        state.activeWorkoutId = state.workouts[0].id;
+      }
+      if (!state.lastReminderTimestamp) {
+        state.lastReminderTimestamp = Date.now();
+      }
+
+      saveState();
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error("Failed to save state", e);
+      }
+    }
+
+    function renderApp() {
+      const todayKey = getWorkoutDateKey();
+
+      // Date Header
+      const dateOpts = { weekday: 'short', month: 'short', day: 'numeric' };
+      document.getElementById('currentDateDisplay').textContent = new Date().toLocaleDateString('en-US', dateOpts);
+
+      // Render Workout Tabs
+      const tabsNav = document.getElementById('workoutTabsNav');
+      tabsNav.innerHTML = '';
+
+      state.workouts.forEach(w => {
+        const target = getWorkoutTargetForDate(w, todayKey);
+        const done = getCompletedToday(w.id, todayKey);
+        const left = Math.max(0, target - done);
+        const isActive = w.id === state.activeWorkoutId;
+
+        const pill = document.createElement('button');
+        pill.onclick = () => selectWorkout(w.id);
+        pill.className = `px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 whitespace-nowrap active-press ${
+          isActive 
+            ? 'orange-gradient-bg text-white shadow-glow-sm border border-brand-400' 
+            : 'bg-dark-card border border-dark-border text-zinc-300 hover:border-zinc-500'
+        }`;
+
+        let statusText = left === 0 ? '✓ Done' : `${left} ${w.unit}`;
+        pill.innerHTML = `
+          <span>${escapeHtml(w.name)}</span>
+          <span class="px-1.5 py-0.5 rounded-md text-[10px] font-mono ${isActive ? 'bg-black/20 text-white' : 'bg-dark-bg text-brand-400'}">
+            ${statusText}
+          </span>
+        `;
+        tabsNav.appendChild(pill);
+      });
+
+      // Active Workout Overview
+      const activeWorkout = state.workouts.find(w => w.id === state.activeWorkoutId);
+      if (activeWorkout) {
+        const target = getWorkoutTargetForDate(activeWorkout, todayKey);
+        const completed = getCompletedToday(activeWorkout.id, todayKey);
+        const setsCount = getSetsTodayCount(activeWorkout.id, todayKey);
+        const remaining = Math.max(0, target - completed);
+        const pct = Math.min(100, Math.round((completed / target) * 100));
+
+        document.getElementById('activeWorkoutTitle').textContent = activeWorkout.name;
+        document.getElementById('activeWorkoutRuleSubtext').textContent = `+${activeWorkout.incrementVal || 1} ${activeWorkout.unit} / ${activeWorkout.incrementDays || 1}d`;
+        document.getElementById('keypadUnitLabel').textContent = activeWorkout.unit;
+        document.getElementById('submitLogBtnText').textContent = `LOG SET (${keypadBuffer} ${activeWorkout.unit})`;
+
+        const heroDisplay = document.getElementById('heroRemainingDisplay');
+        if (remaining === 0) {
+          heroDisplay.textContent = "Goal Completed! 🎉";
+          heroDisplay.className = "text-3xl sm:text-4xl font-black text-amber-400 mt-1.5 mb-0.5 tracking-tight";
+        } else {
+          heroDisplay.textContent = `${remaining} ${activeWorkout.unit === 'seconds' ? 'Sec' : activeWorkout.unit} Left`;
+          heroDisplay.className = "text-4xl sm:text-5xl font-black text-white mt-1.5 mb-0.5 tracking-tight orange-gradient-text";
+        }
+
+        document.getElementById('heroGoalText').textContent = `${target} ${activeWorkout.unit}`;
+        document.getElementById('heroCompletedText').textContent = `${completed} ${activeWorkout.unit}`;
+        document.getElementById('heroSetsTodayText').textContent = `${setsCount} sets`;
+        document.getElementById('heroProgressBar').style.width = `${pct}%`;
+
+        // Stopwatch visibility logic
+        const stopwatchCard = document.getElementById('stopwatchCard');
+        if (activeWorkout.unit === 'seconds' || activeWorkout.name.toLowerCase().includes('plank')) {
+          stopwatchCard.classList.remove('hidden');
+        } else {
+          stopwatchCard.classList.add('hidden');
+        }
+      }
+
+      renderTodaySets();
+      renderHistoryLogs();
+      check5DayReminder();
+      populateAnalyticsDropdown();
+    }
+
+    /* TIMER / STOPWATCH LOGIC (AUTOMATIC TRANSFER ON PAUSE) */
+    function toggleStopwatch() {
+      const btnText = document.getElementById('timerText');
+      const btnIcon = document.getElementById('timerIcon');
+      const pulse = document.getElementById('stopwatchPulse');
+
+      if (stopwatchRunning) {
+        // PAUSE TIMER -> AUTOMATICALLY TRANSFER ELAPSED SECONDS TO KEYPAD!
+        stopStopwatch();
+        btnText.textContent = 'Resume Timer';
+        btnIcon.textContent = '▶';
+        pulse.className = 'w-2.5 h-2.5 rounded-full bg-zinc-600';
+
+        if (stopwatchSeconds > 0) {
+          keypadBuffer = String(stopwatchSeconds);
+          updateKeypadDisplay();
+          showToast(`⚡ ${stopwatchSeconds} seconds transferred to keypad!`);
+        }
+      } else {
+        stopwatchRunning = true;
+        btnText.textContent = 'Pause Timer';
+        btnIcon.textContent = '⏸';
+        pulse.className = 'w-2.5 h-2.5 rounded-full bg-brand-500 animate-ping';
+
+        stopwatchInterval = setInterval(() => {
+          stopwatchSeconds++;
+          updateStopwatchDisplay();
+        }, 1000);
+      }
+    }
+
+    function stopStopwatch() {
+      stopwatchRunning = false;
+      if (stopwatchInterval) clearInterval(stopwatchInterval);
+      stopwatchInterval = null;
+    }
+
+    function resetStopwatch() {
+      stopStopwatch();
+      stopwatchSeconds = 0;
+      updateStopwatchDisplay();
+      document.getElementById('timerText').textContent = 'Start Timer';
+      document.getElementById('timerIcon').textContent = '▶';
+      document.getElementById('stopwatchPulse').className = 'w-2.5 h-2.5 rounded-full bg-zinc-600';
+    }
+
+    function updateStopwatchDisplay() {
+      const mins = String(Math.floor(stopwatchSeconds / 60)).padStart(2, '0');
+      const secs = String(stopwatchSeconds % 60).padStart(2, '0');
+      document.getElementById('stopwatchDisplay').textContent = `${mins}:${secs}`;
+    }
+
+    /* DIRECT KEYPAD LOGIC */
+    function selectWorkout(workoutId) {
+      state.activeWorkoutId = workoutId;
+      keypadBuffer = "0";
+      resetStopwatch();
+      updateKeypadDisplay();
+      saveState();
+      renderApp();
+    }
+
+    function keypadPress(digit) {
+      if (keypadBuffer === "0") {
+        keypadBuffer = digit;
+      } else if (keypadBuffer.length < 5) {
+        keypadBuffer += digit;
+      }
+      updateKeypadDisplay();
+    }
+
+    function keypadClear() {
+      keypadBuffer = "0";
+      updateKeypadDisplay();
+    }
+
+    function keypadBackspace() {
+      if (keypadBuffer.length <= 1) {
+        keypadBuffer = "0";
+      } else {
+        keypadBuffer = keypadBuffer.slice(0, -1);
+      }
+      updateKeypadDisplay();
+    }
+
+    function keypadQuickAdd(val) {
+      const current = parseInt(keypadBuffer) || 0;
+      keypadBuffer = String(current + val);
+      updateKeypadDisplay();
+    }
+
+    function keypadLogAllRemaining() {
+      const activeWorkout = state.workouts.find(w => w.id === state.activeWorkoutId);
+      if (!activeWorkout) return;
+
+      const todayKey = getWorkoutDateKey();
+      const target = getWorkoutTargetForDate(activeWorkout, todayKey);
+      const completed = getCompletedToday(activeWorkout.id, todayKey);
+      const remaining = Math.max(0, target - completed);
+
+      keypadBuffer = String(remaining > 0 ? remaining : 10);
+      updateKeypadDisplay();
+    }
+
+    function updateKeypadDisplay() {
+      document.getElementById('keypadTypedDisplay').textContent = keypadBuffer;
+      const activeWorkout = state.workouts.find(w => w.id === state.activeWorkoutId);
+      if (activeWorkout) {
+        document.getElementById('submitLogBtnText').textContent = `LOG SET (${keypadBuffer} ${activeWorkout.unit})`;
+      }
+    }
+
+    function submitKeypadLog() {
+      const amount = parseInt(keypadBuffer);
+
+      if (isNaN(amount) || amount <= 0) {
+        showToast("Enter or time a number on the keypad first!");
+        return;
+      }
+
+      const activeWorkout = state.workouts.find(w => w.id === state.activeWorkoutId);
+      if (!activeWorkout) return;
+
+      const logEntry = {
+        id: 'log_' + Date.now(),
+        workoutId: activeWorkout.id,
+        amount: amount,
+        timestamp: Date.now(),
+        dateKey: getWorkoutDateKey()
+      };
+
+      state.logs.push(logEntry);
+      keypadBuffer = "0";
+      resetStopwatch();
+      updateKeypadDisplay();
+
+      saveState();
+      playChimeSound();
+      showToast(`Logged +${amount} ${activeWorkout.unit}!`);
+      renderApp();
+    }
+
+    function undoLog(logId) {
+      const idx = state.logs.findIndex(l => l.id === logId);
+      if (idx > -1) {
+        state.logs.splice(idx, 1);
+        saveState();
+        renderApp();
+        showToast("Set removed");
+      }
+    }
+
+    /* ================= ANALYTICS & LINE GRAPH SYSTEM ================= */
+    function populateAnalyticsDropdown() {
+      const select = document.getElementById('analyticsWorkoutSelect');
+      if (!select) return;
+
+      const currentVal = select.value;
+      select.innerHTML = state.workouts.map(w => `<option value="${w.id}">${escapeHtml(w.name)}</option>`).join('');
+
+      if (currentVal && state.workouts.some(w => w.id === currentVal)) {
+        select.value = currentVal;
+      } else {
+        select.value = state.activeWorkoutId;
+      }
+    }
+
+    function renderAnalyticsGraph() {
+      const select = document.getElementById('analyticsWorkoutSelect');
+      if (!select) return;
+
+      const workoutId = select.value;
+      const workout = state.workouts.find(w => w.id === workoutId);
+      if (!workout) return;
+
+      // Filter logs for this workout
+      const wLogs = (state.logs || []).filter(l => l.workoutId === workoutId);
+
+      // Compute statistics per day
+      const dailyMap = {}; // { dateKey: { totalAmount, setCount } }
+      let grandTotalAmount = 0;
+      let grandTotalSets = wLogs.length;
+      let maxSingleSet = 0;
+
+      wLogs.forEach(log => {
+        grandTotalAmount += log.amount;
+        if (log.amount > maxSingleSet) maxSingleSet = log.amount;
+
+        if (!dailyMap[log.dateKey]) {
+          dailyMap[log.dateKey] = { totalAmount: 0, setCount: 0 };
+        }
+        dailyMap[log.dateKey].totalAmount += log.amount;
+        dailyMap[log.dateKey].setCount += 1;
+      });
+
+      // Update Summary Cards
+      const overallAvg = grandTotalSets > 0 ? (grandTotalAmount / grandTotalSets).toFixed(1) : '0.0';
+      document.getElementById('statOverallAvg').textContent = `${overallAvg} ${workout.unit}`;
+      document.getElementById('statPeakSet').textContent = `${maxSingleSet} ${workout.unit}`;
+      document.getElementById('statTotalSets').textContent = `${grandTotalSets}`;
+
+      // Sort dates
+      const sortedDates = Object.keys(dailyMap).sort();
+
+      // Render Canvas Line Chart
+      const canvas = document.getElementById('analyticsCanvas');
+      const ctx = canvas.getContext('2d');
+      const container = canvas.parentElement;
+
+      // Handle Retina Resolution
+      const dpr = window.devicePixelRatio || 1;
+      const rect = container.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const w = rect.width;
+      const h = rect.height;
+
+      ctx.clearRect(0, 0, w, h);
+
+      if (sortedDates.length === 0) {
+        ctx.fillStyle = '#71717a';
+        ctx.font = '12px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No logged sets for this workout yet.', w / 2, h / 2);
+        return;
+      }
+
+      // Calculate averages per date
+      const dataPoints = sortedDates.map(dateKey => {
+        const item = dailyMap[dateKey];
+        const avg = item.setCount > 0 ? (item.totalAmount / item.setCount) : 0;
+        return {
+          dateKey: dateKey,
+          avg: parseFloat(avg.toFixed(1)),
+          totalAmount: item.totalAmount,
+          setCount: item.setCount
+        };
+      });
+
+      // Chart Padding
+      const padL = 35;
+      const padR = 20;
+      const padT = 25;
+      const padB = 30;
+
+      const chartW = w - padL - padR;
+      const chartH = h - padT - padB;
+
+      // Determine Max Y value
+      let maxAvg = Math.max(...dataPoints.map(d => d.avg), 10);
+      maxAvg = Math.ceil(maxAvg * 1.15); // Add 15% head room
+
+      // Draw Y-Axis Grid & Labels
+      const gridSteps = 4;
+      ctx.strokeStyle = '#2a2a32';
+      ctx.fillStyle = '#71717a';
+      ctx.font = '9px JetBrains Mono, monospace';
+      ctx.textAlign = 'right';
+
+      for (let i = 0; i <= gridSteps; i++) {
+        const val = Math.round((maxAvg / gridSteps) * i);
+        const y = padT + chartH - (chartH * (val / maxAvg));
+
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(w - padR, y);
+        ctx.stroke();
+
+        ctx.fillText(val, padL - 6, y + 3);
+      }
+
+      // Map Points to Canvas Coordinates
+      const points = dataPoints.map((d, i) => {
+        const x = sortedDates.length === 1 
+          ? padL + chartW / 2 
+          : padL + (chartW * (i / (sortedDates.length - 1)));
+        const y = padT + chartH - (chartH * (d.avg / maxAvg));
+        return { ...d, x, y };
+      });
+
+      // Draw Gradient Fill under line
+      if (points.length > 1) {
+        const fillGradient = ctx.createLinearGradient(0, padT, 0, padT + chartH);
+        fillGradient.addColorStop(0, 'rgba(255, 107, 0, 0.35)');
+        fillGradient.addColorStop(1, 'rgba(255, 107, 0, 0.0)');
+
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, padT + chartH);
+        points.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.lineTo(points[points.length - 1].x, padT + chartH);
+        ctx.closePath();
+        ctx.fillStyle = fillGradient;
+        ctx.fill();
+      }
+
+      // Draw Glowing Orange Line
+      ctx.beginPath();
+      ctx.strokeStyle = '#ff6b00';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = 'rgba(255, 107, 0, 0.6)';
+      ctx.shadowBlur = 8;
+
+      points.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.stroke();
+      ctx.shadowBlur = 0; // Reset shadow
+
+      // Draw Point Dots & X-Labels
+      ctx.textAlign = 'center';
+      ctx.font = '9px Inter, sans-serif';
+
+      points.forEach((p, i) => {
+        // Dot
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#ff6b00';
+        ctx.lineWidth = 2;
+        ctx.fill();
+        ctx.stroke();
+
+        // X Label (short date)
+        if (sortedDates.length <= 7 || i % Math.ceil(sortedDates.length / 5) === 0 || i === sortedDates.length - 1) {
+          const shortDate = p.dateKey.slice(5); // MM-DD
+          ctx.fillStyle = '#a1a1aa';
+          ctx.fillText(shortDate, p.x, h - 8);
+        }
+      });
+
+      // Store points for touch/click tooltip inspection
+      canvas.currentPoints = points;
+      canvas.unitLabel = workout.unit;
+    }
+
+    // Canvas Interactive Tooltip Listener
+    document.getElementById('analyticsCanvas').addEventListener('click', handleChartInteraction);
+    document.getElementById('analyticsCanvas').addEventListener('mousemove', handleChartInteraction);
+
+    function handleChartInteraction(e) {
+      const canvas = e.currentTarget;
+      const points = canvas.currentPoints;
+      if (!points || points.length === 0) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      // Find closest point
+      let closest = null;
+      let minDistance = 30; // Max snap radius
+
+      points.forEach(p => {
+        const dist = Math.hypot(p.x - clickX, p.y - clickY);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closest = p;
+        }
+      });
+
+      const tooltip = document.getElementById('chartTooltip');
+      if (closest) {
+        tooltip.style.left = `${Math.min(rect.width - 120, Math.max(10, closest.x - 50))}px`;
+        tooltip.style.top = `${Math.max(10, closest.y - 45)}px`;
+        tooltip.innerHTML = `
+          <div class="font-bold text-white font-mono text-[10px]">${closest.dateKey}</div>
+          <div class="text-brand-400 font-extrabold text-xs">Avg: ${closest.avg} ${canvas.unitLabel}/set</div>
+          <div class="text-zinc-400 text-[9px]">${closest.setCount} set(s) | Total: ${closest.totalAmount}</div>
+        `;
+        tooltip.classList.remove('hidden');
+      } else {
+        tooltip.classList.add('hidden');
+      }
+    }
+
+    /* ================= DATA IMPORT & EXPORT SYSTEM ================= */
+    function exportDataJSON() {
+      const exportObject = {
+        app: "PULSE_WORKOUT_TRACKER",
+        exportDate: new Date().toISOString(),
+        version: "4.0",
+        data: state
+      };
+
+      const jsonStr = JSON.stringify(exportObject, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pulse_workout_backup_${getWorkoutDateKey()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // Reset 5-day reminder timer on backup!
+      state.lastReminderTimestamp = Date.now();
+      saveState();
+      check5DayReminder();
+
+      showToast("Data exported successfully!");
+    }
+
+    function importDataJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed && parsed.data && Array.isArray(parsed.data.workouts)) {
+            showConfirmModal(
+              "Import Data Backup?",
+              "This will overwrite your existing workout state and logs with the backup file data.",
+              () => {
+                state = parsed.data;
+                saveState();
+                renderApp();
+                showToast("Backup restored successfully!");
+              }
+            );
+          } else {
+            showToast("Invalid backup JSON format!");
+          }
+        } catch (err) {
+          showToast("Error parsing JSON file!");
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = ""; // reset input
+    }
+
+    /* ================= 5-DAY REMINDER SYSTEM ================= */
+    function check5DayReminder() {
+      const lastTime = state.lastReminderTimestamp || Date.now();
+      const fiveDaysMs = 5 * 24 * 60 * 60 * 1000;
+      const diff = Date.now() - lastTime;
+
+      const banner = document.getElementById('reminderBanner');
+      const statusText = document.getElementById('nextReminderStatusText');
+
+      if (diff >= fiveDaysMs) {
+        if (banner) banner.classList.remove('hidden');
+        if (statusText) statusText.textContent = "DUE NOW!";
+      } else {
+        if (banner) banner.classList.add('hidden');
+        const remainingMs = fiveDaysMs - diff;
+        const daysLeft = Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
+        if (statusText) statusText.textContent = `In ~${daysLeft} day(s)`;
+      }
+    }
+
+    function dismissReminder() {
+      state.lastReminderTimestamp = Date.now();
+      saveState();
+      check5DayReminder();
+      showToast("Reminder snoozed for 5 days");
+    }
+
+    function resetReminderClock() {
+      state.lastReminderTimestamp = Date.now();
+      saveState();
+      check5DayReminder();
+      showToast("5-Day timer reset");
+    }
+
+    function requestBrowserNotification() {
+      if (!("Notification" in window)) {
+        showToast("Notifications not supported in this browser");
+        return;
+      }
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          showToast("Notifications enabled!");
+        } else {
+          showToast("Notification permission denied");
+        }
+      });
+    }
+
+    function renderTodaySets() {
+      const todayKey = getWorkoutDateKey();
+      const activeWorkout = state.workouts.find(w => w.id === state.activeWorkoutId);
+      if (!activeWorkout) return;
+
+      const todayLogs = (state.logs || []).filter(l => l.workoutId === activeWorkout.id && l.dateKey === todayKey);
+      
+      document.getElementById('todaySetsCountBadge').textContent = `${todayLogs.length} sets`;
+      const listContainer = document.getElementById('todaySetsList');
+
+      if (todayLogs.length === 0) {
+        listContainer.innerHTML = `<div class="text-center py-3 text-xs text-zinc-500">No sets logged today yet. Use keypad above!</div>`;
+        return;
+      }
+
+      listContainer.innerHTML = todayLogs.slice().reverse().map(log => {
+        const timeStr = new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return `
+          <div class="flex items-center justify-between p-2 rounded-xl bg-dark-bg border border-dark-border text-xs">
+            <div class="flex items-center space-x-2">
+              <span class="w-2 h-2 rounded-full bg-brand-500 shadow-glow-sm"></span>
+              <span class="text-zinc-400 font-mono text-[10px]">${timeStr}</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span class="font-extrabold text-brand-400 font-mono">+${log.amount} ${activeWorkout.unit}</span>
+              <button onclick="undoLog('${log.id}')" title="Delete set" class="text-zinc-500 hover:text-red-400 p-1 active-press">✕</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderHistoryLogs() {
+      const logs = state.logs || [];
+      document.getElementById('totalHistoryCount').textContent = `${logs.length} Entries`;
+
+      const container = document.getElementById('historyLogsContainer');
+      if (logs.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-xs text-zinc-500">No history logged yet.</div>`;
+        return;
+      }
+
+      const grouped = {};
+      logs.forEach(log => {
+        if (!grouped[log.dateKey]) grouped[log.dateKey] = [];
+        grouped[log.dateKey].push(log);
+      });
+
+      const sortedDateKeys = Object.keys(grouped).sort().reverse();
+
+      container.innerHTML = sortedDateKeys.map(dateKey => {
+        const dateLogs = grouped[dateKey];
+        return `
+          <div class="p-3 rounded-xl bg-dark-bg/90 border border-dark-border space-y-2">
+            <div class="flex items-center justify-between pb-1 border-b border-dark-border/60">
+              <span class="text-xs font-black text-brand-400 font-mono">${dateKey}</span>
+              <span class="text-[10px] font-bold text-zinc-400">${dateLogs.length} set(s)</span>
+            </div>
+            <div class="space-y-1">
+              ${dateLogs.map(l => {
+                const w = state.workouts.find(wk => wk.id === l.workoutId);
+                const wName = w ? w.name : 'Workout';
+                const unit = w ? w.unit : '';
+                return `
+                  <div class="flex items-center justify-between text-xs py-0.5">
+                    <span class="text-zinc-300 font-medium">${escapeHtml(wName)}</span>
+                    <span class="font-mono font-bold text-white">+${l.amount} ${unit}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function switchMainView(view) {
+      const trackerSection = document.getElementById('trackerSection');
+      const analyticsSection = document.getElementById('analyticsSection');
+      const historySection = document.getElementById('historySection');
+      const settingsSection = document.getElementById('settingsSection');
+
+      const tabTracker = document.getElementById('viewTabTracker');
+      const tabAnalytics = document.getElementById('viewTabAnalytics');
+      const tabHistory = document.getElementById('viewTabHistory');
+
+      // Hide all
+      trackerSection.classList.add('hidden');
+      analyticsSection.classList.add('hidden');
+      historySection.classList.add('hidden');
+      settingsSection.classList.add('hidden');
+
+      const inactiveStyle = "py-1.5 rounded-lg text-xs font-bold transition-all text-zinc-400 hover:text-white";
+      const activeStyle = "py-1.5 rounded-lg text-xs font-bold transition-all bg-brand-500 text-white shadow-glow-sm";
+
+      tabTracker.className = inactiveStyle;
+      tabAnalytics.className = inactiveStyle;
+      tabHistory.className = inactiveStyle;
+
+      if (view === 'tracker') {
+        trackerSection.classList.remove('hidden');
+        tabTracker.className = activeStyle;
+      } else if (view === 'analytics') {
+        analyticsSection.classList.remove('hidden');
+        tabAnalytics.className = activeStyle;
+        renderAnalyticsGraph();
+      } else if (view === 'history') {
+        historySection.classList.remove('hidden');
+        tabHistory.className = activeStyle;
+      } else if (view === 'settings') {
+        settingsSection.classList.remove('hidden');
+      }
+    }
+
+    function openWorkoutModal() {
+      document.getElementById('modalTitle').textContent = "Add Custom Workout";
+      document.getElementById('editingWorkoutId').value = "";
+      document.getElementById('formName').value = "";
+      document.getElementById('formInitialTarget').value = 30;
+      document.getElementById('formUnit').value = "reps";
+      document.getElementById('formIncrementVal').value = 1;
+      document.getElementById('formIncrementDays').value = 1;
+      document.getElementById('deleteWorkoutBtn').classList.add('hidden');
+
+      const modal = document.getElementById('workoutModal');
+      modal.classList.remove('pointer-events-none', 'opacity-0');
+    }
+
+    function openEditActiveWorkoutModal() {
+      const activeWorkout = state.workouts.find(w => w.id === state.activeWorkoutId);
+      if (!activeWorkout) return;
+
+      document.getElementById('modalTitle').textContent = `Edit Rules: ${activeWorkout.name}`;
+      document.getElementById('editingWorkoutId').value = activeWorkout.id;
+      document.getElementById('formName').value = activeWorkout.name;
+      document.getElementById('formInitialTarget').value = activeWorkout.initialTarget;
+      document.getElementById('formUnit').value = activeWorkout.unit;
+      document.getElementById('formIncrementVal').value = activeWorkout.incrementVal !== undefined ? activeWorkout.incrementVal : 1;
+      document.getElementById('formIncrementDays').value = activeWorkout.incrementDays || 1;
+
+      document.getElementById('deleteWorkoutBtn').classList.remove('hidden');
+
+      const modal = document.getElementById('workoutModal');
+      modal.classList.remove('pointer-events-none', 'opacity-0');
+    }
+
+    function closeWorkoutModal() {
+      const modal = document.getElementById('workoutModal');
+      modal.classList.add('pointer-events-none', 'opacity-0');
+    }
+
+    function saveWorkoutForm(e) {
+      e.preventDefault();
+
+      const editingId = document.getElementById('editingWorkoutId').value;
+      const name = document.getElementById('formName').value.trim();
+      const initialTarget = parseInt(document.getElementById('formInitialTarget').value);
+      const unit = document.getElementById('formUnit').value;
+      const incVal = parseInt(document.getElementById('formIncrementVal').value);
+      const incDays = parseInt(document.getElementById('formIncrementDays').value);
+
+      if (!name || isNaN(initialTarget) || initialTarget <= 0) {
+        showToast("Please enter valid targets");
+        return;
+      }
+
+      const todayKey = getWorkoutDateKey();
+
+      if (editingId) {
+        const workout = state.workouts.find(w => w.id === editingId);
+        if (workout) {
+          workout.name = name;
+          workout.initialTarget = initialTarget;
+          workout.unit = unit;
+          workout.incrementVal = isNaN(incVal) ? 1 : incVal;
+          workout.incrementDays = isNaN(incDays) || incDays <= 0 ? 1 : incDays;
+        }
+      } else {
+        const newId = 'workout_' + Date.now();
+        const newWorkout = {
+          id: newId,
+          name: name,
+          unit: unit,
+          initialTarget: initialTarget,
+          incrementVal: isNaN(incVal) ? 1 : incVal,
+          incrementDays: isNaN(incDays) || incDays <= 0 ? 1 : incDays,
+          startDateKey: todayKey
+        };
+        state.workouts.push(newWorkout);
+        state.activeWorkoutId = newId;
+      }
+
+      saveState();
+      closeWorkoutModal();
+      renderApp();
+      showToast("Workout saved!");
+    }
+
+    function promptDeleteWorkout() {
+      const editingId = document.getElementById('editingWorkoutId').value;
+      if (!editingId) return;
+
+      if (state.workouts.length <= 1) {
+        showToast("Keep at least one workout!");
+        return;
+      }
+
+      showConfirmModal(
+        "Delete Workout?",
+        "Are you sure you want to remove this workout? History logs will remain intact.",
+        () => {
+          state.workouts = state.workouts.filter(w => w.id !== editingId);
+          state.activeWorkoutId = state.workouts[0].id;
+          saveState();
+          closeWorkoutModal();
+          renderApp();
+          showToast("Workout deleted");
+        }
+      );
+    }
+
+    // Custom Modal Confirmation Replacement
+    function showConfirmModal(title, msg, onOk) {
+      const modal = document.getElementById('confirmModal');
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMessage').textContent = msg;
+
+      const okBtn = document.getElementById('confirmOkBtn');
+      const cancelBtn = document.getElementById('confirmCancelBtn');
+
+      const cleanup = () => {
+        modal.classList.add('pointer-events-none', 'opacity-0');
+        okBtn.onclick = null;
+        cancelBtn.onclick = null;
+      };
+
+      okBtn.onclick = () => {
+        cleanup();
+        onOk();
+      };
+      cancelBtn.onclick = cleanup;
+
+      modal.classList.remove('pointer-events-none', 'opacity-0');
+    }
+
+    function start2AMCountdown() {
+      function update() {
+        const now = new Date();
+        const next2AM = new Date(now);
+        if (now.getHours() >= 2) {
+          next2AM.setDate(next2AM.getDate() + 1);
+        }
+        next2AM.setHours(2, 0, 0, 0);
+
+        const diff = next2AM.getTime() - now.getTime();
+        if (diff <= 0) {
+          renderApp();
+          return;
+        }
+
+        const hrs = String(Math.floor(diff / (1000 * 60 * 60))).padStart(2, '0');
+        const mins = String(Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+        const secs = String(Math.floor((diff % (1000 * 60)) / 1000)).padStart(2, '0');
+
+        const el = document.getElementById('countdownDisplay');
+        if (el) el.textContent = `${hrs}h ${mins}m ${secs}s`;
+      }
+
+      update();
+      setInterval(update, 1000);
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toastNotification');
+      document.getElementById('toastMsg').textContent = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 2200);
+    }
+
+    function playChimeSound() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, now); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.12); // A5
+
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.25);
+      } catch (e) {
+        // Audio muted
+      }
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    window.onload = function() {
+      loadState();
+      renderApp();
+      start2AMCountdown();
+    };
+  </script>
+</body>
+</html>
